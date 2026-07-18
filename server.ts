@@ -358,90 +358,111 @@ app.get("/api/state", (req, res) => {
 
 // AUTHENTICATION ROUTES
 app.post("/api/auth/login", (req, res) => {
-  const { identifier, password } = req.body;
-  if (!identifier || !password) {
-    return res.status(400).json({ success: false, message: "Identifier and password are required." });
+  try {
+    const body = req.body || {};
+    const identifier = typeof body.identifier === "string" ? body.identifier : "";
+    const password = typeof body.password === "string" ? body.password : "";
+
+    if (!identifier.trim() || !password) {
+      return res.status(400).json({ success: false, message: "Identifier and password are required." });
+    }
+
+    const idLower = identifier.toLowerCase().trim();
+    const user = users.find(u => 
+      (u.email.toLowerCase() === idLower || u.username.toLowerCase() === idLower || u.phone === identifier) && 
+      u.password === password
+    );
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Invalid email/username or password." });
+    }
+
+    res.json({ success: true, user });
+  } catch (error: any) {
+    console.error("Login handler error:", error);
+    return res.status(500).json({ success: false, message: "Login failed." });
   }
-
-  const idLower = identifier.toLowerCase().trim();
-  const user = users.find(u => 
-    (u.email.toLowerCase() === idLower || u.username.toLowerCase() === idLower || u.phone === identifier) && 
-    u.password === password
-  );
-
-  if (!user) {
-    return res.status(401).json({ success: false, message: "Invalid email/username or password." });
-  }
-
-  res.json({ success: true, user });
 });
 
 app.post("/api/auth/register", (req, res) => {
-  const { name, email, username, phone, password, role, extraInfo } = req.body;
-  if (!name || !email || !username || !phone || !password || !role) {
-    return res.status(400).json({ success: false, message: "All fields are required." });
-  }
+  try {
+    const body = req.body || {};
+    const name = typeof body.name === "string" ? body.name : "";
+    const email = typeof body.email === "string" ? body.email : "";
+    const username = typeof body.username === "string" ? body.username : "";
+    const phone = typeof body.phone === "string" ? body.phone : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    const role = typeof body.role === "string" ? body.role : "";
+    const extraInfo = typeof body.extraInfo === "string" ? body.extraInfo : "";
 
-  const emailLower = email.toLowerCase().trim();
-  const usernameLower = username.toLowerCase().trim();
+    if (!name || !email || !username || !phone || !password || !role) {
+      return res.status(400).json({ success: false, message: "All fields are required." });
+    }
 
-  const exists = users.some(u => u.email.toLowerCase() === emailLower || u.username.toLowerCase() === usernameLower);
-  if (exists) {
-    return res.status(400).json({ success: false, message: "Email or username is already taken." });
-  }
+    const emailLower = email.toLowerCase().trim();
+    const usernameLower = username.toLowerCase().trim();
 
-  const newId = `u_${Date.now()}`;
-  let targetId = `t_${Date.now()}`;
+    const exists = users.some(u => u.email.toLowerCase() === emailLower || u.username.toLowerCase() === usernameLower);
+    if (exists) {
+      return res.status(400).json({ success: false, message: "Email or username is already taken." });
+    }
 
-  // If registering as student, append to in-memory students list dynamically
-  if (role === "student") {
-    targetId = `s_${Date.now()}`;
-    const newStudent = {
-      id: targetId,
+    const newId = `u_${Date.now()}`;
+    let targetId = `t_${Date.now()}`;
+
+    // If registering as student, append to in-memory students list dynamically
+    if (role === "student") {
+      targetId = `s_${Date.now()}`;
+      const newStudent = {
+        id: targetId,
+        name,
+        grade: extraInfo || "Form 1 - Blue",
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+        streak: 0,
+        xp: 0,
+        coins: 0,
+        level: 1,
+        assessed: false,
+        weeklyProgress: [0],
+        lessons: [
+          {
+            id: "l1",
+            title: "The Wise Turtle and the Monkey",
+            description: "An engaging folk story that helps improve reading comprehension and inference skills.",
+            category: "reading" as const,
+            type: "story" as const,
+            durationMinutes: 15,
+            completed: false,
+            content: "Once upon a time in a lush green forest, there lived a Wise Turtle named Tutu. Tutu was slow, but he was very smart and observed everything around him. In the same forest lived a playful monkey named Momo, who loved to play tricks on other animals. One sunny afternoon, Momo challenged Tutu to a food gathering contest. Momo gathered fruits quickly but ate half of them. Tutu gathered slowly but saved every single berry. When winter came, Momo had no food left, while Tutu had a cozy stash of delicious berries. Momo learned that patience and planning are better than quick tricks.",
+            interactivePrompt: "Can you explain the moral of the story to Tutu?"
+          }
+        ],
+        badges: []
+      };
+      state.students.push(newStudent);
+    } else if (role === "parent") {
+      // Parent target id can link to matching child's student id
+      const matchingStudent = state.students.find(s => s.name.toLowerCase().includes(extraInfo.toLowerCase()));
+      targetId = matchingStudent ? matchingStudent.id : "s1";
+    }
+
+    const newUser = {
+      id: newId,
       name,
-      grade: extraInfo || "Form 1 - Blue",
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      streak: 0,
-      xp: 0,
-      coins: 0,
-      level: 1,
-      assessed: false,
-      weeklyProgress: [0],
-      lessons: [
-        {
-          id: "l1",
-          title: "The Wise Turtle and the Monkey",
-          description: "An engaging folk story that helps improve reading comprehension and inference skills.",
-          category: "reading" as const,
-          type: "story" as const,
-          durationMinutes: 15,
-          completed: false,
-          content: "Once upon a time in a lush green forest, there lived a Wise Turtle named Tutu. Tutu was slow, but he was very smart and observed everything around him. In the same forest lived a playful monkey named Momo, who loved to play tricks on other animals. One sunny afternoon, Momo challenged Tutu to a food gathering contest. Momo gathered fruits quickly but ate half of them. Tutu gathered slowly but saved every single berry. When winter came, Momo had no food left, while Tutu had a cozy stash of delicious berries. Momo learned that patience and planning are better than quick tricks.",
-          interactivePrompt: "Can you explain the moral of the story to Tutu?"
-        }
-      ],
-      badges: []
+      username,
+      email,
+      phone,
+      password,
+      role,
+      targetId
     };
-    state.students.push(newStudent);
-  } else if (role === "parent") {
-    // Parent target id can link to matching child's student id
-    const matchingStudent = state.students.find(s => s.name.toLowerCase().includes(extraInfo?.toLowerCase() || ""));
-    targetId = matchingStudent ? matchingStudent.id : "s1";
+
+    users.push(newUser);
+    res.json({ success: true, user: newUser });
+  } catch (error: any) {
+    console.error("Register handler error:", error);
+    return res.status(500).json({ success: false, message: "Registration failed." });
   }
-
-  const newUser = {
-    id: newId,
-    name,
-    username,
-    email,
-    phone,
-    password,
-    role,
-    targetId
-  };
-
-  users.push(newUser);
-  res.json({ success: true, user: newUser });
 });
 
 app.post("/api/state", requireAuth, (req, res) => {
