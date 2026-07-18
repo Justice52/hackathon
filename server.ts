@@ -8,6 +8,7 @@ dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
+const AUTH_BYPASS_ENABLED = process.env.AUTH_BYPASS === "true";
 
 app.use(express.json());
 
@@ -333,6 +334,11 @@ const DEFAULT_USERS_JSON = JSON.stringify(users);
 
 // Auth Middleware
 function requireAuth(req: any, res: any, next: any) {
+  if (AUTH_BYPASS_ENABLED) {
+    req.user = users[0];
+    return next();
+  }
+
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).json({ error: "Unauthorized. Authentication is required." });

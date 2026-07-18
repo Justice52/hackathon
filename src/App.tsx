@@ -27,6 +27,17 @@ import { UserRole, Student, TeacherClassroom, ChatMessage, Lesson, GapScores } f
 
 export default function App() {
   const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+  const AUTH_BYPASS_ENABLED = import.meta.env.VITE_AUTH_BYPASS === "true";
+  const BYPASS_USER = {
+    id: "u1",
+    name: "Ama Boateng",
+    username: "ama",
+    email: "ama@learnlift.com",
+    phone: "1234567890",
+    password: "password123",
+    role: "student" as UserRole,
+    targetId: "s1",
+  };
 
   const toApiUrl = (path: string) => `${API_BASE_URL}${path}`;
 
@@ -91,6 +102,20 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (AUTH_BYPASS_ENABLED) {
+      setUser(BYPASS_USER);
+      setRole(BYPASS_USER.role);
+      setView("dashboard");
+      fetchState(BYPASS_USER);
+
+      const bypassPath = `/${BYPASS_USER.role}`;
+      if (window.location.pathname !== bypassPath) {
+        window.history.replaceState({}, "", bypassPath);
+      }
+
+      return;
+    }
+
     // 1. Session restoration
     const savedSession = localStorage.getItem("learnlift_session") || sessionStorage.getItem("learnlift_session");
     let currentUser = null;
@@ -154,6 +179,16 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (AUTH_BYPASS_ENABLED) {
+      setUser(BYPASS_USER);
+      setRole(BYPASS_USER.role);
+      setView("dashboard");
+      setSubTab("dashboard");
+      setShowRoleSelectorDropdown(false);
+      window.history.pushState({}, "", `/${BYPASS_USER.role}`);
+      return;
+    }
+
     localStorage.removeItem("learnlift_session");
     sessionStorage.removeItem("learnlift_session");
     setUser(null);
