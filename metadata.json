@@ -1,0 +1,6 @@
+{
+  "name": "LearnLift",
+  "description": "An Early Learning Intervention Platform designed to identify hidden learning gaps, personalize lessons, equip teachers with tools, and keep parents informed.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
