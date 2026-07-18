@@ -8,6 +8,8 @@ interface RegisterScreenProps {
 }
 
 export default function RegisterScreen({ onSuccess, onBackToLogin }: RegisterScreenProps) {
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
   const [selectedRole, setSelectedRole] = useState<UserRole>("student");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -73,7 +75,7 @@ export default function RegisterScreen({ onSuccess, onBackToLogin }: RegisterScr
       else if (selectedRole === "parent") extraInfo = childName;
       else if (selectedRole === "admin") extraInfo = districtName;
 
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

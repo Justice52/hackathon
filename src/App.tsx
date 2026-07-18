@@ -21,10 +21,25 @@ import LoginScreen from "./components/LoginScreen";
 import RegisterScreen from "./components/RegisterScreen";
 import LeaderboardView from "./components/LeaderboardView";
 import AdventureGameMode from "./components/AdventureGameMode";
+import { INITIAL_STUDENTS, INITIAL_CLASSROOM, INITIAL_MESSAGES } from "./data";
 
 import { UserRole, Student, TeacherClassroom, ChatMessage, Lesson, GapScores } from "./types";
 
 export default function App() {
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
+  const toApiUrl = (path: string) => `${API_BASE_URL}${path}`;
+
+  const buildOfflineFallbackState = () =>
+    JSON.parse(
+      JSON.stringify({
+        students: INITIAL_STUDENTS,
+        classroom: INITIAL_CLASSROOM,
+        parentMessages: INITIAL_MESSAGES,
+        activeStudentId: "s1",
+      })
+    );
+
   const [user, setUser] = useState<any>(null);
   const [view, setView] = useState<"welcome" | "login" | "register" | "dashboard">("welcome");
   const [role, setRole] = useState<UserRole | null>(null);
@@ -40,6 +55,7 @@ export default function App() {
     activeStudentId: string;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   // Helper for Authorization Headers
   const getHeaders = (uObj?: any) => {
@@ -54,13 +70,21 @@ export default function App() {
   const fetchState = async (activeUser?: any) => {
     try {
       const u = activeUser || user;
-      const res = await fetch("/api/state", {
+      const res = await fetch(toApiUrl("/api/state"), {
         headers: u ? { "Authorization": u.id } : {}
       });
+
+      if (!res.ok) {
+        throw new Error(`Failed to load state (${res.status})`);
+      }
+
       const data = await res.json();
       setStateData(data);
+      setApiError(null);
     } catch (err) {
       console.error("Failed to load synchronized state:", err);
+      setApiError("Could not reach the app backend. Showing offline demo data.");
+      setStateData(buildOfflineFallbackState());
     } finally {
       setLoading(false);
     }
@@ -170,7 +194,7 @@ export default function App() {
   const handleResetDb = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/state/reset", { 
+      const res = await fetch(toApiUrl("/api/state/reset"), { 
         method: "POST",
         headers: getHeaders()
       });
@@ -195,7 +219,7 @@ export default function App() {
   const handleCompleteLesson = async (lessonId: string) => {
     if (!stateData) return;
     try {
-      const res = await fetch("/api/student/lesson-complete", {
+      const res = await fetch(toApiUrl("/api/student/lesson-complete"), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ studentId: stateData.activeStudentId, lessonId })
@@ -212,7 +236,7 @@ export default function App() {
   const handleAssessSubmit = async (scores: GapScores) => {
     if (!stateData) return;
     try {
-      const res = await fetch("/api/student/assess", {
+      const res = await fetch(toApiUrl("/api/student/assess"), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ studentId: stateData.activeStudentId, scores })
@@ -229,7 +253,7 @@ export default function App() {
 
   const handleDismissAlert = async (alertId: string) => {
     try {
-      const res = await fetch("/api/alert/dismiss", {
+      const res = await fetch(toApiUrl("/api/alert/dismiss"), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ alertId })
@@ -245,7 +269,7 @@ export default function App() {
 
   const handleSendMessage = async (sender: "teacher" | "parent", text: string) => {
     try {
-      const res = await fetch("/api/message/send", {
+      const res = await fetch(toApiUrl("/api/message/send"), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ sender, text })
@@ -289,7 +313,7 @@ export default function App() {
     });
 
     try {
-      const res = await fetch("/api/state", {
+      const res = await fetch(toApiUrl("/api/state"), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ students: updatedStudents })
@@ -307,7 +331,7 @@ export default function App() {
     if (!stateData) return;
     const updatedStudents = stateData.students.map(s => s.id === updatedStudent.id ? updatedStudent : s);
     try {
-      const res = await fetch("/api/state", {
+      const res = await fetch(toApiUrl("/api/state"), {
         method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({ students: updatedStudents })
@@ -391,6 +415,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between">
+      {apiError && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-2 text-center text-xs font-semibold">
+          {apiError}
+        </div>
+      )}
+
       {/* Dynamic Master Top Bar */}
       <header className="bg-white border-b border-slate-100 sticky top-0 z-50 shadow-xs">
         <div className="max-w-7xl mx-auto px-6 py-3.5 flex justify-between items-center">

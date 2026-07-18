@@ -12,6 +12,8 @@ interface AITutorProps {
 }
 
 export default function AITutor({ studentId, studentName, passageContext, lessonTitle, interactivePrompt, onBack }: AITutorProps) {
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const defaultInit = {
       id: "ai_init",
@@ -68,7 +70,7 @@ export default function AITutor({ studentId, studentName, passageContext, lesson
         } catch (e) {}
       }
 
-      const response = await fetch("/api/ai/chat", {
+      const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

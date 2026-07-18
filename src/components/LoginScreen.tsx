@@ -8,6 +8,8 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onSuccess, onBack, onSignUp }: LoginScreenProps) {
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
@@ -48,7 +50,7 @@ export default function LoginScreen({ onSuccess, onBack, onSignUp }: LoginScreen
 
     try {
       // Verify against the database via server-side endpoint
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password })
